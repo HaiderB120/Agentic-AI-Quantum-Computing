@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Composer & Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- 3D Graphics Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; overscroll-behavior: none; }
+        .gate, .gate-icon { cursor: grab; user-select: none; }
+        .qubit-line { height: 2px; background-color: #94a3b8; position: relative; }
+        .gate-placeholder { border: 2px dashed #475569; background-color: rgba(100, 116, 139, 0.1); position: relative; }
+        .chat-bubble { max-width: 80%; word-wrap: break-word; }
+        .barrier-line { width: 2px; height: 100%; background-color: #94a3b8; border-left: 1px dashed white; border-right: 1px dashed white; }
+        #circuit-board-content::-webkit-scrollbar { display: none; }
+        #circuit-board-content { -ms-overflow-style: none; scrollbar-width: none; }
+        #qsphere-container canvas { display: block; width: 100%; height: 100%; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white flex flex-col h-screen overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-slate-800 p-4 shadow-md flex justify-between items-center z-10">
+        <h1 class="text-xl font-bold text-cyan-400">Quantum Composer & Chatbot</h1>
+        <div class="flex items-center space-x-2">
+            <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key..." class="bg-slate-700 text-sm rounded-md p-2 w-64 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+            <button id="save-key-btn" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm py-2 px-3 rounded-md transition-all">Save</button>
+        </div>
+        <div class="flex items-center space-x-4">
+            <button id="run-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg">Run Circuit</button>
+            <button id="clear-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg">Clear</button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Left Panel: Quantum Composer -->
+        <div class="w-2/3 flex flex-col p-4 overflow-hidden">
+            <h2 class="text-xl font-semibold mb-4 text-slate-300">Quantum Circuit Composer</h2>
+            <div class="bg-slate-800 p-4 rounded-lg mb-4">
+                <h3 class="font-semibold mb-2 text-slate-400">Operations</h3>
+                <div id="gate-palette" class="grid grid-cols-9 gap-2">
+                    <div draggable="true" data-gate="H" class="gate bg-red-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Hadamard">H</div>
+                    <div draggable="true" data-gate="X" class="gate bg-sky-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Pauli-X (NOT)">X</div>
+                    <div draggable="true" data-gate="Y" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Pauli-Y">Y</div>
+                    <div draggable="true" data-gate="Z" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Pauli-Z">Z</div>
+                    <div draggable="true" data-gate="I" class="gate bg-slate-300 w-12 h-12 flex items-center justify-center rounded-md font-bold text-slate-900 text-lg shadow-lg" title="Identity">I</div>
+                    <div draggable="true" data-gate="SX" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Square-Root X">√X</div>
+                    <div draggable="true" data-gate="SXdg" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Square-Root X Dagger">√X†</div>
+                    <div draggable="true" data-gate="U" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Universal Gate U">U</div>
+                    <div draggable="true" data-gate="S" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="S Gate">S</div>
+                    <div draggable="true" data-gate="Sdg" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="S Dagger">S†</div>
+                    <div draggable="true" data-gate="T" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="T Gate">T</div>
+                    <div draggable="true" data-gate="Tdg" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="T Dagger">T†</div>
+                    <div draggable="true" data-gate="P" class="gate bg-teal-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Phase Gate">P</div>
+                    <div draggable="true" data-gate="RX" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="RX Gate">RX</div>
+                    <div draggable="true" data-gate="RY" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="RY Gate">RY</div>
+                    <div draggable="true" data-gate="RZ" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="RZ Gate">RZ</div>
+                    <div draggable="true" data-gate="C" class="gate-icon bg-sky-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Control">
+                        <svg class="w-6 h-6" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="8" fill="currentColor"/></svg>
+                    </div>
+                     <div draggable="true" data-gate="TARGET" class="gate-icon bg-sky-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="NOT Gate (Target for CNOT)">
+                        <svg class="w-10 h-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="4" fill="none"/><line x1="24" y1="6" x2="24" y2="42" stroke="currentColor" stroke-width="4"/><line x1="6" y1="24" x2="42" y2="24" stroke="currentColor" stroke-width="4"/></svg>
+                    </div>
+                    <div draggable="true" data-gate="MEASURE" class="gate-icon bg-slate-300 w-12 h-12 flex items-center justify-center rounded-md text-slate-900 shadow-lg" title="Measure">
+                         <svg class="w-10 h-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 40V24a16 16 0 0 1 32 0v16" stroke="currentColor" stroke-width="4" fill="none"/><path d="m20 20 l4 8 l4 -8" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    </div>
+                    <div draggable="true" data-gate="BARRIER" class="gate-icon bg-slate-300 w-12 h-12 flex items-center justify-center rounded-md text-slate-900 shadow-lg" title="Barrier">
+                        <div class="barrier-line h-8"></div>
+                    </div>
+                    <div draggable="true" data-gate="RESET" class="gate bg-slate-300 w-12 h-12 flex items-center justify-center rounded-md font-mono text-slate-900 text-lg shadow-lg" title="Reset to |0>">|0⟩</div>
+                </div>
+            </div>
+            <div id="circuit-board-container" class="flex-1 bg-slate-800 p-6 rounded-lg overflow-x-auto relative">
+                <svg id="connector-svg" class="absolute top-0 left-0 w-full h-full pointer-events-none z-0"></svg>
+                <div id="circuit-board-content" class="relative z-10"></div>
+            </div>
+            <div class="bg-slate-800 p-4 rounded-lg mt-4 h-64 flex space-x-4">
+                <div class="w-2/3 flex flex-col">
+                    <h3 class="font-semibold mb-2 text-slate-400">Probabilities</h3>
+                    <div id="results" class="bg-slate-900 rounded p-4 flex-1 flex items-end">
+                        <div class="flex items-center justify-center w-full h-full text-slate-500">// Results will appear here as a bar chart</div>
+                    </div>
+                </div>
+                <div class="w-1/3 flex flex-col">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="font-semibold text-slate-400">Global Q-Sphere</h3>
+                    </div>
+                    <div id="qsphere-container" class="bg-slate-900 rounded flex-1 flex items-center justify-center relative overflow-hidden cursor-move">
+                        <!-- The 3D Canvas will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Chatbot -->
+        <div class="w-1/3 flex flex-col bg-slate-800 m-4 rounded-lg overflow-hidden">
+            <h2 class="text-xl font-semibold p-4 border-b border-slate-700 text-slate-300">Quantum Chat</h2>
+            <div id="chat-window" class="flex-1 p-4 overflow-y-auto">
+                 <div class="flex justify-start mb-4">
+                    <div class="chat-bubble bg-slate-700 rounded-lg p-3">
+                        <p class="text-sm">Hello! To begin, please enter your OpenAI API key in the header and click "Save".</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-slate-700">
+                <div class="flex">
+                    <input type="text" id="chat-input" class="flex-1 bg-slate-700 rounded-l-lg p-2 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Ask a question...">
+                    <button id="send-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold p-2 rounded-r-lg">Send</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const gatePalette = document.getElementById('gate-palette');
+            const circuitBoard = document.getElementById('circuit-board-content');
+            const connectorSvg = document.getElementById('connector-svg');
+            const clearBtn = document.getElementById('clear-btn');
+            const runBtn = document.getElementById('run-btn');
+            const resultsDisplay = document.getElementById('results');
+            const chatInput = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
+            const chatWindow = document.getElementById('chat-window');
+            const apiKeyInput = document.getElementById('api-key-input');
+            const saveKeyBtn = document.getElementById('save-key-btn');
+            
+            const NUM_QUBITS = 4;
+            const CIRCUIT_DEPTH = 16;
+
+            // --- 3D Q-Sphere variables ---
+            let scene, camera, renderer, controls;
+            let pointsGroup, linesGroup, labelsGroup; // Groups to manage objects
+            const qsphereContainer = document.getElementById('qsphere-container');
+
+            // --- API KEY HANDLING ---
+            saveKeyBtn.addEventListener('click', () => {
+                const key = apiKeyInput.value.trim();
+                if (key) {
+                    localStorage.setItem('openai_api_key', key);
+                    saveKeyBtn.textContent = 'Saved!';
+                    saveKeyBtn.classList.remove('bg-emerald-500', 'hover:bg-emerald-600');
+                    saveKeyBtn.classList.add('bg-green-600');
+                    setTimeout(() => {
+                        saveKeyBtn.textContent = 'Save';
+                        saveKeyBtn.classList.remove('bg-green-600');
+                        saveKeyBtn.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
+                    }, 2000);
+                }
+            });
+            const savedKey = localStorage.getItem('openai_api_key');
+            if (savedKey) { apiKeyInput.value = savedKey; }
+
+
+            // --- DRAG AND DROP LOGIC ---
+            let draggedGateInfo = null;
+
+            gatePalette.addEventListener('dragstart', (e) => {
+                if (e.target.draggable) {
+                    draggedGateInfo = { element: e.target.cloneNode(true), origin: 'palette' };
+                    e.dataTransfer.effectAllowed = 'copy';
+                }
+            });
+
+            document.addEventListener('dragend', () => {
+                if (draggedGateInfo && draggedGateInfo.origin === 'board') {
+                    draggedGateInfo.element.classList.remove('opacity-50');
+                }
+                draggedGateInfo = null;
+            });
+
+            function initializeCircuit() {
+                circuitBoard.innerHTML = '';
+                for (let i = 0; i < NUM_QUBITS; i++) {
+                    const qubitWrapper = document.createElement('div');
+                    qubitWrapper.className = 'flex items-center mb-6';
+
+                    const qubitLabel = document.createElement('div');
+                    qubitLabel.className = 'w-16 text-center font-mono text-slate-400 flex-shrink-0';
+                    qubitLabel.textContent = `q[${i}]`;
+                    qubitWrapper.appendChild(qubitLabel);
+
+                    const line = document.createElement('div');
+                    line.className = 'qubit-line flex-1 flex items-center';
+                    for (let j = 0; j < CIRCUIT_DEPTH; j++) {
+                        const dropZone = document.createElement('div');
+                        dropZone.className = 'gate-placeholder w-12 h-12 mx-2 rounded-md flex-shrink-0';
+                        dropZone.dataset.qubit = i;
+                        dropZone.dataset.step = j;
+                        line.appendChild(dropZone);
+                    }
+                    qubitWrapper.appendChild(line);
+                    circuitBoard.appendChild(qubitWrapper);
+                }
+
+                initGlobalQSphere();
+                const initial_amps = {[`${'0'.repeat(NUM_QUBITS)}`]: { amp: [1.0, 0.0], prob: 1.0 } };
+                updateGlobalQSphere(initial_amps);
+                
+                addDragDropListeners();
+                updateCnotConnectors();
+            }
+
+            function addDragDropListeners() {
+                const dropZones = circuitBoard.querySelectorAll('.gate-placeholder');
+                dropZones.forEach(zone => {
+                    zone.addEventListener('dragover', (e) => { 
+                        e.preventDefault(); 
+                        e.dataTransfer.dropEffect = (draggedGateInfo && draggedGateInfo.origin === 'board') ? 'move' : 'copy';
+                        zone.classList.add('bg-cyan-400', 'bg-opacity-30'); 
+                    });
+                    zone.addEventListener('dragleave', (e) => zone.classList.remove('bg-cyan-400', 'bg-opacity-30'));
+                    
+                    zone.addEventListener('dragstart', (e) => {
+                        const gate = e.target.closest('[data-gate]');
+                        if (gate && gate.parentElement === zone) {
+                            e.stopPropagation();
+                            draggedGateInfo = { element: gate, origin: 'board' };
+                            e.dataTransfer.effectAllowed = 'move';
+                            setTimeout(() => gate.classList.add('opacity-50'), 0);
+                        }
+                    });
+
+                    zone.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        zone.classList.remove('bg-cyan-400', 'bg-opacity-30');
+                        if (draggedGateInfo) {
+                            if (draggedGateInfo.origin === 'board') {
+                                if (draggedGateInfo.element.parentElement !== zone) {
+                                    zone.innerHTML = ''; 
+                                }
+                            } else {
+                                zone.innerHTML = '';
+                            }
+                            
+                            if (draggedGateInfo.origin === 'palette') {
+                                const newGate = draggedGateInfo.element.cloneNode(true);
+                                newGate.classList.remove('opacity-50');
+                                newGate.classList.add('absolute', 'top-0', 'left-0', 'w-12', 'h-12');
+                                newGate.setAttribute('draggable', 'true');
+                                zone.appendChild(newGate);
+                            } else if (draggedGateInfo.origin === 'board') {
+                                zone.appendChild(draggedGateInfo.element);
+                            }
+                            updateCnotConnectors();
+                        }
+                    });
+                });
+
+                // Add right-click to delete functionality
+                circuitBoard.addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    const gate = e.target.closest('[data-gate]');
+                    if (gate && gate.parentElement.classList.contains('gate-placeholder')) {
+                        gate.parentElement.removeChild(gate);
+                        updateCnotConnectors();
+                    }
+                });
+            }
+
+            // --- GLOBAL 3D Q-SPHERE LOGIC ---
+            function initGlobalQSphere() {
+                qsphereContainer.innerHTML = '';
+                scene = new THREE.Scene();
+                camera = new THREE.PerspectiveCamera(75, qsphereContainer.clientWidth / qsphereContainer.clientHeight, 0.1, 1000);
+                camera.position.z = 2.2;
+                renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+                renderer.setSize(qsphereContainer.clientWidth, qsphereContainer.clientHeight);
+                renderer.setPixelRatio(window.devicePixelRatio);
+                qsphereContainer.appendChild(renderer.domElement);
+                controls = new THREE.OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controls.dampingFactor = 0.05;
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+                scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+                directionalLight.position.set(1, 1, 1);
+                scene.add(directionalLight);
+                
+                const sphereGeom = new THREE.SphereGeometry(1, 32, 16);
+                const wireframe = new THREE.WireframeGeometry(sphereGeom);
+                const line = new THREE.LineSegments(wireframe);
+                line.material.color.set(0x475569);
+                line.material.opacity = 0.25;
+                line.material.transparent = true;
+                scene.add(line);
+                
+                pointsGroup = new THREE.Group();
+                linesGroup = new THREE.Group();
+                labelsGroup = new THREE.Group();
+                scene.add(pointsGroup);
+                scene.add(linesGroup);
+                scene.add(labelsGroup);
+
+                function animate() {
+                    requestAnimationFrame(animate);
+                    controls.update();
+                    renderer.render(scene, camera);
+                }
+                animate();
+
+                window.addEventListener('resize', () => {
+                    camera.aspect = qsphereContainer.clientWidth / qsphereContainer.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(qsphereContainer.clientWidth, qsphereContainer.clientHeight);
+                }, false);
+            }
+
+            function updateGlobalQSphere(amplitudes) {
+                [pointsGroup, linesGroup, labelsGroup].forEach(group => {
+                    while (group.children.length > 0) { group.remove(group.children[0]); }
+                });
+                
+                if (Object.keys(amplitudes).length === 0) return;
+
+                const sortedAmplitudes = Object.entries(amplitudes).sort(([stateA], [stateB]) => stateA.localeCompare(stateB));
+
+                sortedAmplitudes.forEach(([state, data]) => {
+                    const { amp, prob } = data;
+                    const [real, imag] = amp;
+                    const magnitude = Math.sqrt(prob);
+                    const phase = Math.atan2(imag, real);
+
+                    const hamming_weight = (state.match(/1/g) || []).length;
+                    const theta = Math.acos(1 - 2 * hamming_weight / NUM_QUBITS);
+                    
+                    const states_with_same_weight = sortedAmplitudes.filter(([_state]) => (_state.match(/1/g) || []).length === hamming_weight);
+                    
+                    const state_index_at_latitude = states_with_same_weight.findIndex(([_state]) => _state === state);
+
+                    const phi = (states_with_same_weight.length > 0) 
+                        ? (2 * Math.PI / states_with_same_weight.length) * state_index_at_latitude
+                        : 0;
+
+                    const x = 1 * Math.sin(theta) * Math.cos(phi);
+                    const y = 1 * Math.sin(theta) * Math.sin(phi);
+                    const z = 1 * Math.cos(theta);
+                    const position = new THREE.Vector3(x, y, z);
+                    
+                    const phaseColor = new THREE.Color().setHSL((phase + Math.PI) / (2 * Math.PI), 1.0, 0.5);
+                    const lineMaterial = new THREE.LineBasicMaterial({ color: phaseColor });
+                    
+                    // The line should go from the origin to the center of the point
+                    const lineGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), position]);
+                    const line = new THREE.Line(lineGeometry, lineMaterial);
+                    linesGroup.add(line);
+                    
+                    const pointSize = 0.02 + prob * 0.08;
+                    const pointGeometry = new THREE.SphereGeometry(pointSize, 16, 16);
+                    const pointMaterial = new THREE.MeshBasicMaterial({ color: phaseColor });
+                    const point = new THREE.Mesh(pointGeometry, pointMaterial);
+                    point.position.copy(position);
+                    pointsGroup.add(point);
+
+                    if (prob > 0.01) {
+                        const label = createTextSprite(`|${state}⟩`, { color: '#cbd5e1', fontsize: 24 });
+                        label.position.copy(position).multiplyScalar(1.15);
+                        labelsGroup.add(label);
+                    }
+                });
+            }
+            
+            function createTextSprite(message, parameters) {
+                const fontface = parameters.fontface || 'monospace';
+                const fontsize = parameters.fontsize || 18;
+                const color = parameters.color || '#FFFFFF';
+                const padding = 10;
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                context.font = `${fontsize}px ${fontface}`;
+                
+                const metrics = context.measureText(message);
+                const textWidth = metrics.width;
+
+                canvas.width = textWidth + padding * 2;
+                canvas.height = fontsize + padding * 2;
+                
+                context.font = `${fontsize}px ${fontface}`;
+                context.fillStyle = "rgba(0, 0, 0, 0)";
+                context.fillRect(0, 0, canvas.width, canvas.height);
+                
+                context.fillStyle = color;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                context.fillText(message, canvas.width / 2, canvas.height / 2);
+
+                const texture = new THREE.Texture(canvas);
+                texture.needsUpdate = true;
+
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture, sizeAttenuation: false });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(0.007 * canvas.width, 0.007 * canvas.height, 1.0);
+                return sprite;
+            }
+            
+            clearBtn.addEventListener('click', initializeCircuit);
+            runBtn.addEventListener('click', async () => {
+                const circuit = buildCircuitRepresentation();
+                resultsDisplay.innerHTML = `<div class="flex items-center justify-center w-full h-full text-slate-500">Simulating...</div>`;
+                try {
+                    const response = await fetch('/simulate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ circuit: circuit }),
+                    });
+                    const results = await response.json();
+                    if (!response.ok) throw new Error(results.error || `HTTP error! status: ${response.status}`);
+                    renderProbabilities(results.probabilities);
+                    updateGlobalQSphere(results.state_amplitudes);
+                } catch (error) {
+                    resultsDisplay.innerHTML = `<div class="flex items-center justify-center h-full text-red-400">${error.message}</div>`;
+                    console.error('Error simulating circuit:', error);
+                }
+            });
+
+            function renderProbabilities(counts) {
+                resultsDisplay.innerHTML = ''; 
+                const totalProb = Object.values(counts).reduce((sum, prob) => sum + prob, 0);
+                if (totalProb < 0.00001) { resultsDisplay.innerHTML = `<div class="flex items-center justify-center w-full h-full text-slate-500">No measurement results.</div>`; return; }
+
+                const graphContainer = document.createElement('div');
+                graphContainer.className = "w-full h-full flex items-end justify-center space-x-4 px-4 border-b-2 border-slate-700";
+                
+                const sortedStates = Object.keys(counts).sort();
+
+                for (const state of sortedStates) {
+                    const probability = counts[state] * 100;
+                    if (probability < 0.1) continue;
+
+                    const barWrapper = document.createElement('div');
+                    barWrapper.className = 'flex flex-col items-center h-full justify-end';
+                    const probLabel = document.createElement('div');
+                    probLabel.className = 'text-xs text-slate-400 mb-1';
+                    probLabel.textContent = `${probability.toFixed(1)}%`;
+                    const bar = document.createElement('div');
+                    bar.className = 'w-10 bg-sky-500 hover:bg-sky-400 rounded-t-md transition-all duration-300';
+                    bar.style.height = `${probability}%`;
+                    bar.title = `Probability: ${probability.toFixed(4)}%`;
+                    const stateLabel = document.createElement('div');
+                    stateLabel.className = 'font-mono text-sm mt-2 text-slate-300';
+                    stateLabel.textContent = state; 
+                    barWrapper.appendChild(probLabel); barWrapper.appendChild(bar); barWrapper.appendChild(stateLabel);
+                    graphContainer.appendChild(barWrapper);
+                }
+                resultsDisplay.appendChild(graphContainer);
+            }
+
+            function buildCircuitRepresentation() {
+                const circuit = Array(NUM_QUBITS).fill(0).map(() => Array(CIRCUIT_DEPTH).fill(null));
+                const dropZones = circuitBoard.querySelectorAll('.gate-placeholder');
+                dropZones.forEach(zone => {
+                    const gateElement = zone.querySelector('[data-gate]');
+                    if(gateElement) { const qubit = zone.dataset.qubit; const step = zone.dataset.step; const gateType = gateElement.dataset.gate; if (qubit !== undefined && step !== undefined) circuit[qubit][step] = gateType; }
+                });
+                return circuit;
+            }
+
+            function updateCnotConnectors() {
+                connectorSvg.innerHTML = '';
+                for (let step = 0; step < CIRCUIT_DEPTH; step++) {
+                    const stepGates = circuitBoard.querySelectorAll(`.gate-placeholder[data-step='${step}']`);
+                    let controlQubitZone = null;
+                    const targetQubitZones = [];
+                    stepGates.forEach(zone => { 
+                        const gate = zone.querySelector('[data-gate]'); 
+                        if (gate) { 
+                            if (gate.dataset.gate === 'C') controlQubitZone = zone; 
+                            else if (gate.dataset.gate === 'TARGET') targetQubitZones.push(zone); 
+                        } 
+                    });
+                    if (controlQubitZone && targetQubitZones.length > 0) {
+                        const controlRect = controlQubitZone.getBoundingClientRect(); 
+                        const boardRect = circuitBoard.getBoundingClientRect();
+                        const startX = controlRect.left - boardRect.left + controlRect.width / 2; 
+                        const startY = controlRect.top - boardRect.top + controlRect.height / 2;
+                        targetQubitZones.forEach(targetZone => {
+                            const targetRect = targetZone.getBoundingClientRect(); 
+                            const endY = targetRect.top - boardRect.top + targetRect.height / 2;
+                            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                            line.setAttribute('x1', startX); line.setAttribute('y1', startY); line.setAttribute('x2', startX); line.setAttribute('y2', endY);
+                            line.setAttribute('stroke', '#67e8f9'); line.setAttribute('stroke-width', '3');
+                            connectorSvg.appendChild(line);
+                        });
+                    }
+                }
+            }
+            
+            sendBtn.addEventListener('click', handleChatSubmit);
+            chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleChatSubmit(); });
+            
+            async function handleChatSubmit() {
+                const message = chatInput.value.trim();
+                const apiKey = localStorage.getItem('openai_api_key');
+                if (!apiKey) { addChatMessage("Please enter your OpenAI API key and click 'Save'.", 'bot-error'); return; }
+                if (message) {
+                    addChatMessage(message, 'user');
+                    chatInput.value = '';
+                    addChatMessage('Thinking...', 'bot-loading');
+                    try {
+                        const response = await fetch('/chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: message, circuit: buildCircuitRepresentation(), apiKey: apiKey })
+                        });
+                        const data = await response.json();
+                        chatWindow.querySelector('.bot-loading-bubble')?.parentElement.remove();
+                        addChatMessage(data.reply, response.ok ? 'bot' : 'bot-error');
+                    } catch (error) {
+                        chatWindow.querySelector('.bot-loading-bubble')?.parentElement.remove();
+                        addChatMessage("An error occurred while connecting to the server.", 'bot-error');
+                    }
+                }
+            }
+
+            function addChatMessage(message, type) {
+                const wrapper = document.createElement('div');
+                wrapper.className = `flex mb-4 ${type === 'user' ? 'justify-end' : 'justify-start'}`;
+                const bubble = document.createElement('div');
+                bubble.className = 'chat-bubble rounded-lg p-3';
+                let bubbleColor = 'bg-slate-700';
+                if (type === 'user') bubbleColor = 'bg-cyan-600';
+                else if (type === 'bot-error') bubbleColor = 'bg-red-500';
+                else if (type === 'bot-loading') bubble.classList.add('bot-loading-bubble');
+                bubble.classList.add(bubbleColor);
+                const text = document.createElement('p');
+                text.className = 'text-sm';
+                if (type === 'bot-loading') {
+                    text.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+                } else {
+                    text.textContent = message;
+                }
+                bubble.appendChild(text);
+                wrapper.appendChild(bubble);
+                chatWindow.appendChild(wrapper);
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            }
+
+            initializeCircuit();
+        });
+    </script>
+</body>
+</html>
