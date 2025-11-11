@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quantum Circuit Composer</title>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: monospace;
+      background-color: #0b0c10;
+      color: #c5c6c7;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background-color: #1f2833;
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 1.5em;
+      color: #66fcf1;
+      border-bottom: 2px solid #45a29e;
+    }
+
+    #circuit-container {
+      flex: 1;
+      display: grid;
+      grid-auto-rows: 1fr;
+      grid-gap: 2px;
+      height: 100%;
+      overflow: hidden;
+      padding: 10px;
+    }
+
+    .qubit-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      background-color: #1f2833;
+      border-radius: 5px;
+      padding: 5px 10px;
+      transition: background-color 0.2s;
+    }
+
+    .qubit-row:hover {
+      background-color: #2e3c4a;
+    }
+
+    .qubit-label {
+      color: #66fcf1;
+      width: 80px;
+      text-align: right;
+      margin-right: 15px;
+      font-weight: bold;
+    }
+
+    .gate {
+      width: 50px;
+      height: 30px;
+      background-color: #45a29e;
+      color: #0b0c10;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 5px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .gate:hover {
+      background-color: #66fcf1;
+    }
+
+    footer {
+      background-color: #1f2833;
+      text-align: center;
+      padding: 10px;
+      border-top: 2px solid #45a29e;
+    }
+
+    #simulate-btn {
+      background-color: #45a29e;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      color: #0b0c10;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    #simulate-btn:hover {
+      background-color: #66fcf1;
+    }
+
+    #output {
+      white-space: pre-wrap;
+      text-align: left;
+      max-height: 200px;
+      overflow-y: auto;
+      background-color: #1f2833;
+      padding: 10px;
+      border-radius: 5px;
+      margin-top: 10px;
+      color: #c5c6c7;
+    }
+  </style>
+</head>
+
+<body>
+  <header>Quantum Circuit Composer</header>
+
+  <div id="circuit-container"></div>
+
+  <footer>
+    <button id="simulate-btn">Simulate Circuit</button>
+    <div id="output"></div>
+  </footer>
+
+  <script>
+    // Example initial circuit (you can populate this dynamically)
+    const exampleCircuit = [
+      ["H", "C", "TARGET"],
+      ["X", "TARGET", "Z"],
+      ["I", "H", "Y"],
+      ["Z", "I", "H"],
+      ["S", "T", "X"],
+      ["I", "I", "I"],
+    ];
+
+    const container = document.getElementById("circuit-container");
+
+    // Render the qubit rows dynamically
+    function renderCircuit(circuit) {
+      container.innerHTML = "";
+      container.style.gridTemplateRows = `repeat(${circuit.length}, 1fr)`;
+
+      circuit.forEach((row, i) => {
+        const rowDiv = document.createElement("div");
+        rowDiv.className = "qubit-row";
+
+        const label = document.createElement("div");
+        label.className = "qubit-label";
+        label.textContent = `Qubit ${i}`;
+        rowDiv.appendChild(label);
+
+        row.forEach((gate) => {
+          const gateDiv = document.createElement("div");
+          gateDiv.className = "gate";
+          gateDiv.textContent = gate;
+          rowDiv.appendChild(gateDiv);
+        });
+
+        container.appendChild(rowDiv);
+      });
+    }
+
+    // Simulate endpoint call
+    document.getElementById("simulate-btn").addEventListener("click", async () => {
+      const outputDiv = document.getElementById("output");
+      outputDiv.textContent = "Running simulation...";
+
+      try {
+        const response = await fetch("/simulate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ circuit: exampleCircuit }),
+        });
+
+        const data = await response.json();
+        outputDiv.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        outputDiv.textContent = "Error: " + err;
+      }
+    });
+
+    renderCircuit(exampleCircuit);
+  </script>
+</body>
+</html>
