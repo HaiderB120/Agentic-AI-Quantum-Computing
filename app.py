@@ -23,7 +23,8 @@ def simulate():
         num_qubits = len(circuit_data)
         circuit_depth = len(circuit_data[0]) if num_qubits > 0 else 0
         
-        qc = QuantumCircuit(num_qubits)
+        # Initialize with quantum and classical registers (allows measurement)
+        qc = QuantumCircuit(num_qubits, num_qubits)
 
         # --- Build the circuit from the data ---
         processed_cnot_steps = set()
@@ -46,7 +47,8 @@ def simulate():
                 elif gate == 'X': qc.x(qubit_index)
                 elif gate == 'Y': qc.y(qubit_index)
                 elif gate == 'Z': qc.z(qubit_index)
-                elif gate == 'I': qc.i(qubit_index)
+                # Fixed: qc.i is removed, use qc.id
+                elif gate == 'I': qc.id(qubit_index)
                 elif gate == 'S': qc.s(qubit_index)
                 elif gate == 'Sdg': qc.sdg(qubit_index)
                 elif gate == 'T': qc.t(qubit_index)
@@ -60,6 +62,8 @@ def simulate():
                 elif gate == 'RZ': qc.rz(np.pi/2, qubit_index)
                 elif gate == 'BARRIER': qc.barrier(qubit_index)
                 elif gate == 'RESET': qc.reset(qubit_index)
+                # Implemented: Measure Gate
+                elif gate == 'MEASURE': qc.measure(qubit_index, qubit_index)
 
         # Make sure there are operations before simulating
         if qc.size() == 0:
@@ -137,3 +141,4 @@ def chat():
 # This makes the script runnable
 if __name__ == '__main__':
     app.run(debug=True)
+
