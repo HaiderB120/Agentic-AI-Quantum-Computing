@@ -10,77 +10,114 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; overscroll-behavior: none; }
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
         .gate, .gate-icon { cursor: grab; user-select: none; }
-        .qubit-line { height: 2px; background-color: #94a3b8; position: relative; }
+        .qubit-line { height: 2px; background-color: #94a3b8; position: relative; min-width: max-content; }
         .gate-placeholder { border: 2px dashed #475569; background-color: rgba(100, 116, 139, 0.1); position: relative; }
-        .chat-bubble { max-width: 80%; word-wrap: break-word; }
+        .chat-bubble { max-width: 85%; word-wrap: break-word; }
         .barrier-line { width: 2px; height: 100%; background-color: #94a3b8; border-left: 1px dashed white; border-right: 1px dashed white; }
         #circuit-board-content::-webkit-scrollbar { display: none; }
         #circuit-board-content { -ms-overflow-style: none; scrollbar-width: none; }
         #qsphere-container canvas { display: block; width: 100%; height: 100%; }
+        
+        /* Custom scrollbar for chat window */
+        #chat-window::-webkit-scrollbar { width: 6px; }
+        #chat-window::-webkit-scrollbar-track { background: #1e293b; }
+        #chat-window::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+        #chat-window::-webkit-scrollbar-thumb:hover { background: #64748b; }
     </style>
 </head>
-<body class="bg-slate-900 text-white flex flex-col h-screen overflow-hidden">
+<body class="bg-slate-900 text-white flex flex-col min-h-screen">
 
     <!-- Header -->
-    <header class="bg-slate-800 p-4 shadow-md flex justify-between items-center z-10">
+    <header class="bg-slate-800 p-4 shadow-md flex justify-between items-center z-50 sticky top-0 border-b border-slate-700">
         <h1 class="text-xl font-bold text-cyan-400">Quantum Composer & Chatbot</h1>
         <div class="flex items-center space-x-2">
             <input type="password" id="api-key-input" placeholder="Enter OpenAI API Key..." class="bg-slate-700 text-sm rounded-md p-2 w-64 focus:outline-none focus:ring-2 focus:ring-cyan-500">
             <button id="save-key-btn" class="bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm py-2 px-3 rounded-md transition-all">Save</button>
         </div>
         <div class="flex items-center space-x-4">
-            <button id="run-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg">Run Circuit</button>
-            <button id="clear-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg">Clear</button>
+            <button id="run-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg shadow-cyan-500/20">Run Circuit</button>
+            <button id="clear-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg shadow-red-500/20">Clear</button>
         </div>
     </header>
 
     <!-- Main Content -->
-    <div class="flex flex-1 overflow-hidden">
+    <div class="flex flex-1 p-4 gap-4">
         
         <!-- Left Panel: Quantum Composer -->
-        <div class="w-2/3 flex flex-col p-4 overflow-hidden">
-            <h2 class="text-xl font-semibold mb-4 text-slate-300">Quantum Circuit Composer</h2>
-            <div class="bg-slate-800 p-4 rounded-lg mb-4">
+        <div class="flex-1 flex flex-col min-w-0">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-slate-300">Quantum Circuit Composer</h2>
+                <div class="flex items-center space-x-4">
+                    <!-- Qubit Controls -->
+                    <div class="flex items-center space-x-2 bg-slate-800 p-2 rounded-lg">
+                        <span class="text-sm text-slate-400 font-mono">Qubits:</span>
+                        <button id="remove-qubit-btn" class="bg-slate-700 hover:bg-red-600 text-white font-bold w-7 h-7 rounded-full flex items-center justify-center text-lg transition-all" title="Remove Qubit">-</button>
+                        <span id="qubit-count-display" class="font-mono text-lg w-8 text-center">4</span>
+                        <button id="add-qubit-btn" class="bg-slate-700 hover:bg-green-600 text-white font-bold w-7 h-7 rounded-full flex items-center justify-center text-lg transition-all" title="Add Qubit">+</button>
+                    </div>
+                    <!-- Step/Column Controls -->
+                    <div class="flex items-center space-x-2 bg-slate-800 p-2 rounded-lg">
+                        <span class="text-sm text-slate-400 font-mono">Steps:</span>
+                        <button id="remove-step-btn" class="bg-slate-700 hover:bg-red-600 text-white font-bold w-7 h-7 rounded-full flex items-center justify-center text-lg transition-all" title="Remove Step">-</button>
+                        <span id="step-count-display" class="font-mono text-lg w-8 text-center">12</span>
+                        <button id="add-step-btn" class="bg-slate-700 hover:bg-green-600 text-white font-bold w-7 h-7 rounded-full flex items-center justify-center text-lg transition-all" title="Add Step">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-slate-800 p-4 rounded-lg mb-4 border border-slate-700">
                 <h3 class="font-semibold mb-2 text-slate-400">Operations</h3>
                 <div id="gate-palette" class="grid grid-cols-9 gap-2">
+                    
+                    <!-- GROUP 1: H, NOT, Control/Target, I -->
                     <div draggable="true" data-gate="H" class="gate bg-red-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Hadamard">H</div>
-                    <div draggable="true" data-gate="X" class="gate bg-sky-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Pauli-X (NOT)">X</div>
-                    <div draggable="true" data-gate="Y" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Pauli-Y">Y</div>
-                    <div draggable="true" data-gate="Z" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Pauli-Z">Z</div>
-                    <div draggable="true" data-gate="I" class="gate bg-slate-300 w-12 h-12 flex items-center justify-center rounded-md font-bold text-slate-900 text-lg shadow-lg" title="Identity">I</div>
-                    <div draggable="true" data-gate="SX" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Square-Root X">√X</div>
-                    <div draggable="true" data-gate="SXdg" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Square-Root X Dagger">√X†</div>
-                    <div draggable="true" data-gate="U" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Universal Gate U">U</div>
-                    <div draggable="true" data-gate="S" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="S Gate">S</div>
-                    <div draggable="true" data-gate="Sdg" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="S Dagger">S†</div>
-                    <div draggable="true" data-gate="T" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="T Gate">T</div>
-                    <div draggable="true" data-gate="Tdg" class="gate bg-indigo-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="T Dagger">T†</div>
-                    <div draggable="true" data-gate="P" class="gate bg-teal-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Phase Gate">P</div>
-                    <div draggable="true" data-gate="RX" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="RX Gate">RX</div>
-                    <div draggable="true" data-gate="RY" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="RY Gate">RY</div>
-                    <div draggable="true" data-gate="RZ" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="RZ Gate">RZ</div>
+                    <div draggable="true" data-gate="X" class="gate bg-sky-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="NOT Gate (Pauli-X)">NOT</div>
                     <div draggable="true" data-gate="C" class="gate-icon bg-sky-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Control">
                         <svg class="w-6 h-6" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="8" fill="currentColor"/></svg>
                     </div>
-                     <div draggable="true" data-gate="TARGET" class="gate-icon bg-sky-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="NOT Gate (Target for CNOT)">
+                    <div draggable="true" data-gate="TARGET" class="gate-icon bg-sky-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="CNOT Target (Pauli-X)">
                         <svg class="w-10 h-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="24" cy="24" r="18" stroke="currentColor" stroke-width="4" fill="none"/><line x1="24" y1="6" x2="24" y2="42" stroke="currentColor" stroke-width="4"/><line x1="6" y1="24" x2="42" y2="24" stroke="currentColor" stroke-width="4"/></svg>
                     </div>
-                    <div draggable="true" data-gate="MEASURE" class="gate-icon bg-slate-300 w-12 h-12 flex items-center justify-center rounded-md text-slate-900 shadow-lg" title="Measure">
+                    <div draggable="true" data-gate="I" class="gate bg-sky-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Identity">I</div>
+
+                    <!-- GROUP 2: Cyan Gates (Very Light Cyan) -->
+                    <div draggable="true" data-gate="T" class="gate bg-cyan-100 w-12 h-12 flex items-center justify-center rounded-md font-bold text-slate-800 text-lg shadow-lg" title="T Gate">T</div>
+                    <div draggable="true" data-gate="S" class="gate bg-cyan-100 w-12 h-12 flex items-center justify-center rounded-md font-bold text-slate-800 text-lg shadow-lg" title="S Gate">S</div>
+                    <div draggable="true" data-gate="Z" class="gate bg-cyan-100 w-12 h-12 flex items-center justify-center rounded-md font-bold text-slate-800 text-lg shadow-lg" title="Pauli-Z">Z</div>
+                    <div draggable="true" data-gate="Tdg" class="gate bg-cyan-100 w-12 h-12 flex items-center justify-center rounded-md font-bold text-slate-800 text-lg shadow-lg" title="T Dagger">T†</div>
+                    <div draggable="true" data-gate="Sdg" class="gate bg-cyan-100 w-12 h-12 flex items-center justify-center rounded-md font-bold text-slate-800 text-lg shadow-lg" title="S Dagger">S†</div>
+                    <div draggable="true" data-gate="P" class="gate bg-cyan-100 w-12 h-12 flex items-center justify-center rounded-md font-bold text-slate-800 text-lg shadow-lg" title="Phase Gate">P</div>
+                    <div draggable="true" data-gate="RZ" class="gate bg-cyan-100 w-12 h-12 flex items-center justify-center rounded-md font-bold text-slate-800 text-lg shadow-lg" title="RZ Gate">RZ</div>
+
+                    <!-- GROUP 3: Grey/White Operations -->
+                    <div draggable="true" data-gate="MEASURE" class="gate-icon bg-slate-400 w-12 h-12 flex items-center justify-center rounded-md text-slate-900 shadow-lg" title="Measure">
                          <svg class="w-10 h-10" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 40V24a16 16 0 0 1 32 0v16" stroke="currentColor" stroke-width="4" fill="none"/><path d="m20 20 l4 8 l4 -8" stroke="currentColor" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     </div>
-                    <div draggable="true" data-gate="BARRIER" class="gate-icon bg-slate-300 w-12 h-12 flex items-center justify-center rounded-md text-slate-900 shadow-lg" title="Barrier">
+                    <div draggable="true" data-gate="RESET" class="gate bg-slate-400 w-12 h-12 flex items-center justify-center rounded-md font-mono text-slate-900 text-lg shadow-lg" title="Reset to |0>">|0⟩</div>
+                    <div draggable="true" data-gate="BARRIER" class="gate-icon bg-slate-400 w-12 h-12 flex items-center justify-center rounded-md text-slate-900 shadow-lg" title="Barrier">
                         <div class="barrier-line h-8"></div>
                     </div>
-                    <div draggable="true" data-gate="RESET" class="gate bg-slate-300 w-12 h-12 flex items-center justify-center rounded-md font-mono text-slate-900 text-lg shadow-lg" title="Reset to |0>">|0⟩</div>
+
+                    <!-- GROUP 4: Pink Gates -->
+                    <div draggable="true" data-gate="SX" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Square-Root X">√X</div>
+                    <div draggable="true" data-gate="SXdg" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Square-Root X Dagger">√X†</div>
+                    <div draggable="true" data-gate="Y" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Pauli-Y">Y</div>
+                    <div draggable="true" data-gate="RX" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="RX Gate">RX</div>
+                    <div draggable="true" data-gate="RY" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="RY Gate">RY</div>
+                    <div draggable="true" data-gate="U" class="gate bg-pink-500 w-12 h-12 flex items-center justify-center rounded-md font-bold text-white text-lg shadow-lg" title="Universal Gate U">U</div>
+
                 </div>
             </div>
-            <div id="circuit-board-container" class="flex-1 bg-slate-800 p-6 rounded-lg overflow-x-auto relative">
-                <svg id="connector-svg" class="absolute top-0 left-0 w-full h-full pointer-events-none z-0"></svg>
-                <div id="circuit-board-content" class="relative z-10"></div>
+            
+            <div id="circuit-board-container" class="bg-slate-800 p-6 rounded-lg overflow-x-auto relative min-h-[200px] border border-slate-700">
+                <div id="circuit-board-content" class="relative z-10 min-w-max">
+                     <svg id="connector-svg" class="absolute top-0 left-0 w-full h-full pointer-events-none z-0"></svg>
+                </div>
             </div>
-            <div class="bg-slate-800 p-4 rounded-lg mt-4 h-64 flex space-x-4">
+
+            <div class="bg-slate-800 p-4 rounded-lg mt-4 h-64 flex space-x-4 border border-slate-700">
                 <div class="w-2/3 flex flex-col">
                     <h3 class="font-semibold mb-2 text-slate-400">Probabilities</h3>
                     <div id="results" class="bg-slate-900 rounded p-4 flex-1 flex items-end">
@@ -99,19 +136,23 @@
         </div>
 
         <!-- Right Panel: Chatbot -->
-        <div class="w-1/3 flex flex-col bg-slate-800 m-4 rounded-lg overflow-hidden">
-            <h2 class="text-xl font-semibold p-4 border-b border-slate-700 text-slate-300">Quantum Chat</h2>
-            <div id="chat-window" class="flex-1 p-4 overflow-y-auto">
+        <div class="w-96 flex flex-col bg-slate-800 rounded-lg overflow-hidden sticky top-24 h-[calc(100vh-7rem)] flex-shrink-0 border border-slate-700 shadow-lg">
+            <h2 class="text-xl font-semibold p-4 border-b border-slate-700 text-slate-300 bg-slate-800/90 backdrop-blur">Quantum Chat</h2>
+            <div id="chat-window" class="flex-1 p-4 overflow-y-auto bg-slate-900/50">
                  <div class="flex justify-start mb-4">
-                    <div class="chat-bubble bg-slate-700 rounded-lg p-3">
-                        <p class="text-sm">Hello! To begin, please enter your OpenAI API key in the header and click "Save".</p>
+                    <div class="chat-bubble bg-slate-700 rounded-lg p-3 border border-slate-600">
+                        <p class="text-sm">Hi! You are using CircuitView, a quantum composer. I can answer any question you have about your circuits or quantum mechanics in general.</p>
                     </div>
                 </div>
             </div>
-            <div class="p-4 border-t border-slate-700">
-                <div class="flex">
-                    <input type="text" id="chat-input" class="flex-1 bg-slate-700 rounded-l-lg p-2 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Ask a question...">
-                    <button id="send-btn" class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold p-2 rounded-r-lg">Send</button>
+            <div class="p-3 border-t border-slate-700 bg-slate-800">
+                <div class="flex items-end gap-2 bg-slate-900 rounded-lg p-2 border border-slate-700 focus-within:border-cyan-500 transition-colors">
+                    <textarea id="chat-input" rows="1" class="bg-transparent text-white text-sm flex-1 focus:outline-none resize-none py-2 max-h-32" placeholder="Ask a question..."></textarea>
+                    <button id="send-btn" class="bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded-md transition-all self-end">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                            <path d="M3.105 2.289a.75.75 0 00-.826.95l1.414 4.925A1.5 1.5 0 004.828 9.25l5.444.75a.75.75 0 010 1.5l-5.444.75a1.5 1.5 0 00-1.135 1.086l-1.414 4.925a.75.75 0 00.826.95 28.896 28.896 0 0015.293-7.154.75.75 0 000-1.115A28.897 28.897 0 003.105 2.289z" />
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -130,13 +171,20 @@
             const chatWindow = document.getElementById('chat-window');
             const apiKeyInput = document.getElementById('api-key-input');
             const saveKeyBtn = document.getElementById('save-key-btn');
+            const addQubitBtn = document.getElementById('add-qubit-btn');
+            const removeQubitBtn = document.getElementById('remove-qubit-btn');
+            const addStepBtn = document.getElementById('add-step-btn');
+            const removeStepBtn = document.getElementById('remove-step-btn');
+            const stepCountDisplay = document.getElementById('step-count-display');
             
-            const NUM_QUBITS = 4;
-            const CIRCUIT_DEPTH = 16;
+            let numQubits = 4; 
+            let circuitDepth = 12;
+            const MIN_QUBITS = 1;
+            const MIN_STEPS = 1;
 
             // --- 3D Q-Sphere variables ---
             let scene, camera, renderer, controls;
-            let pointsGroup, linesGroup, labelsGroup; // Groups to manage objects
+            let pointsGroup, linesGroup, labelsGroup;
             const qsphereContainer = document.getElementById('qsphere-container');
 
             // --- API KEY HANDLING ---
@@ -175,9 +223,66 @@
                 draggedGateInfo = null;
             });
 
+            // --- MODIFICATION LOGIC ---
+            addQubitBtn.addEventListener('click', () => {
+                numQubits++;
+                initializeCircuit();
+            });
+
+            removeQubitBtn.addEventListener('click', () => {
+                if (numQubits > MIN_QUBITS) {
+                    numQubits--;
+                    initializeCircuit();
+                }
+            });
+
+            addStepBtn.addEventListener('click', () => {
+                circuitDepth++;
+                appendColumn();
+            });
+
+            removeStepBtn.addEventListener('click', () => {
+                if (circuitDepth > MIN_STEPS) {
+                    removeLastColumn();
+                }
+            });
+
+            function appendColumn() {
+                stepCountDisplay.textContent = circuitDepth;
+                const lines = circuitBoard.querySelectorAll('.qubit-line');
+                lines.forEach((line, i) => {
+                    const dropZone = document.createElement('div');
+                    dropZone.className = 'gate-placeholder w-12 h-12 mx-2 rounded-md flex-shrink-0';
+                    dropZone.dataset.qubit = i;
+                    dropZone.dataset.step = circuitDepth - 1;
+                    line.appendChild(dropZone);
+                    addDragListenersToZone(dropZone);
+                });
+            }
+
+            function removeLastColumn() {
+                const lines = circuitBoard.querySelectorAll('.qubit-line');
+                lines.forEach(line => {
+                    if (line.lastElementChild) {
+                        line.removeChild(line.lastElementChild);
+                    }
+                });
+                circuitDepth--;
+                stepCountDisplay.textContent = circuitDepth;
+                updateCnotConnectors();
+            }
+
             function initializeCircuit() {
+                document.getElementById('qubit-count-display').textContent = numQubits;
+                stepCountDisplay.textContent = circuitDepth;
+                // Preserve SVG
+                const svg = document.getElementById('connector-svg');
                 circuitBoard.innerHTML = '';
-                for (let i = 0; i < NUM_QUBITS; i++) {
+                circuitBoard.appendChild(svg);
+                
+                resultsDisplay.innerHTML = `<div class="flex items-center justify-center w-full h-full text-slate-500">// Results will appear here as a bar chart</div>`;
+                
+                for (let i = 0; i < numQubits; i++) {
                     const qubitWrapper = document.createElement('div');
                     qubitWrapper.className = 'flex items-center mb-6';
 
@@ -188,7 +293,7 @@
 
                     const line = document.createElement('div');
                     line.className = 'qubit-line flex-1 flex items-center';
-                    for (let j = 0; j < CIRCUIT_DEPTH; j++) {
+                    for (let j = 0; j < circuitDepth; j++) {
                         const dropZone = document.createElement('div');
                         dropZone.className = 'gate-placeholder w-12 h-12 mx-2 rounded-md flex-shrink-0';
                         dropZone.dataset.qubit = i;
@@ -199,62 +304,77 @@
                     circuitBoard.appendChild(qubitWrapper);
                 }
 
-                initGlobalQSphere();
-                const initial_amps = {[`${'0'.repeat(NUM_QUBITS)}`]: { amp: [1.0, 0.0], prob: 1.0 } };
+                if (!scene) {
+                    initGlobalQSphere();
+                }
+                const initial_amps = {[`${'0'.repeat(numQubits)}`]: { amp: [1.0, 0.0], prob: 1.0 } };
                 updateGlobalQSphere(initial_amps);
                 
                 addDragDropListeners();
                 updateCnotConnectors();
             }
 
+            function addDragListenersToZone(zone) {
+                 zone.addEventListener('dragover', (e) => { 
+                    e.preventDefault(); 
+                    e.dataTransfer.dropEffect = (draggedGateInfo && draggedGateInfo.origin === 'board') ? 'move' : 'copy';
+                    zone.classList.add('bg-cyan-400', 'bg-opacity-30'); 
+                });
+                zone.addEventListener('dragleave', (e) => zone.classList.remove('bg-cyan-400', 'bg-opacity-30'));
+                
+                zone.addEventListener('dragstart', (e) => {
+                    const gate = e.target.closest('[data-gate]');
+                    if (gate && gate.parentElement === zone) {
+                        e.stopPropagation();
+                        draggedGateInfo = { element: gate, origin: 'board' };
+                        e.dataTransfer.effectAllowed = 'move';
+                        setTimeout(() => gate.classList.add('opacity-50'), 0);
+                    }
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    zone.classList.remove('bg-cyan-400', 'bg-opacity-30');
+                    
+                    if (draggedGateInfo) {
+                        // LOGIC: SWAP if target has a gate, MOVE/COPY if empty
+                        const existingGate = zone.querySelector('[data-gate]');
+                        const sourceZone = draggedGateInfo.element.parentElement;
+                        
+                        if (draggedGateInfo.origin === 'board') {
+                            if (existingGate) {
+                                // Swap: Move existing gate to source zone
+                                sourceZone.appendChild(existingGate);
+                                zone.appendChild(draggedGateInfo.element);
+                            } else {
+                                // Just move
+                                zone.appendChild(draggedGateInfo.element);
+                            }
+                        } else if (draggedGateInfo.origin === 'palette') {
+                            if (existingGate) {
+                                // Replace
+                                zone.removeChild(existingGate);
+                            }
+                            // Copy new gate
+                            const newGate = draggedGateInfo.element.cloneNode(true);
+                            newGate.classList.remove('opacity-50');
+                            newGate.classList.add('absolute', 'top-0', 'left-0', 'w-12', 'h-12');
+                            newGate.setAttribute('draggable', 'true');
+                            zone.appendChild(newGate);
+                        }
+                        
+                        updateCnotConnectors();
+                    }
+                });
+            }
+
             function addDragDropListeners() {
                 const dropZones = circuitBoard.querySelectorAll('.gate-placeholder');
                 dropZones.forEach(zone => {
-                    zone.addEventListener('dragover', (e) => { 
-                        e.preventDefault(); 
-                        e.dataTransfer.dropEffect = (draggedGateInfo && draggedGateInfo.origin === 'board') ? 'move' : 'copy';
-                        zone.classList.add('bg-cyan-400', 'bg-opacity-30'); 
-                    });
-                    zone.addEventListener('dragleave', (e) => zone.classList.remove('bg-cyan-400', 'bg-opacity-30'));
-                    
-                    zone.addEventListener('dragstart', (e) => {
-                        const gate = e.target.closest('[data-gate]');
-                        if (gate && gate.parentElement === zone) {
-                            e.stopPropagation();
-                            draggedGateInfo = { element: gate, origin: 'board' };
-                            e.dataTransfer.effectAllowed = 'move';
-                            setTimeout(() => gate.classList.add('opacity-50'), 0);
-                        }
-                    });
-
-                    zone.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        zone.classList.remove('bg-cyan-400', 'bg-opacity-30');
-                        if (draggedGateInfo) {
-                            if (draggedGateInfo.origin === 'board') {
-                                if (draggedGateInfo.element.parentElement !== zone) {
-                                    zone.innerHTML = ''; 
-                                }
-                            } else {
-                                zone.innerHTML = '';
-                            }
-                            
-                            if (draggedGateInfo.origin === 'palette') {
-                                const newGate = draggedGateInfo.element.cloneNode(true);
-                                newGate.classList.remove('opacity-50');
-                                newGate.classList.add('absolute', 'top-0', 'left-0', 'w-12', 'h-12');
-                                newGate.setAttribute('draggable', 'true');
-                                zone.appendChild(newGate);
-                            } else if (draggedGateInfo.origin === 'board') {
-                                zone.appendChild(draggedGateInfo.element);
-                            }
-                            updateCnotConnectors();
-                        }
-                    });
+                   addDragListenersToZone(zone);
                 });
 
-                // Add right-click to delete functionality
                 circuitBoard.addEventListener('contextmenu', (e) => {
                     e.preventDefault();
                     const gate = e.target.closest('[data-gate]');
@@ -330,7 +450,7 @@
                     const phase = Math.atan2(imag, real);
 
                     const hamming_weight = (state.match(/1/g) || []).length;
-                    const theta = Math.acos(1 - 2 * hamming_weight / NUM_QUBITS);
+                    const theta = Math.acos(1 - 2 * hamming_weight / numQubits);
                     
                     const states_with_same_weight = sortedAmplitudes.filter(([_state]) => (_state.match(/1/g) || []).length === hamming_weight);
                     
@@ -348,7 +468,6 @@
                     const phaseColor = new THREE.Color().setHSL((phase + Math.PI) / (2 * Math.PI), 1.0, 0.5);
                     const lineMaterial = new THREE.LineBasicMaterial({ color: phaseColor });
                     
-                    // The line should go from the origin to the center of the point
                     const lineGeometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), position]);
                     const line = new THREE.Line(lineGeometry, lineMaterial);
                     linesGroup.add(line);
@@ -455,18 +574,25 @@
             }
 
             function buildCircuitRepresentation() {
-                const circuit = Array(NUM_QUBITS).fill(0).map(() => Array(CIRCUIT_DEPTH).fill(null));
+                const circuit = Array(numQubits).fill(0).map(() => Array(circuitDepth).fill(null));
                 const dropZones = circuitBoard.querySelectorAll('.gate-placeholder');
                 dropZones.forEach(zone => {
                     const gateElement = zone.querySelector('[data-gate]');
-                    if(gateElement) { const qubit = zone.dataset.qubit; const step = zone.dataset.step; const gateType = gateElement.dataset.gate; if (qubit !== undefined && step !== undefined) circuit[qubit][step] = gateType; }
+                    if(gateElement) { 
+                        const qubit = parseInt(zone.dataset.qubit); 
+                        const step = parseInt(zone.dataset.step); 
+                        const gateType = gateElement.dataset.gate; 
+                        if (!isNaN(qubit) && !isNaN(step) && qubit < numQubits && step < circuitDepth) {
+                            circuit[qubit][step] = gateType; 
+                        }
+                    }
                 });
                 return circuit;
             }
 
             function updateCnotConnectors() {
                 connectorSvg.innerHTML = '';
-                for (let step = 0; step < CIRCUIT_DEPTH; step++) {
+                for (let step = 0; step < circuitDepth; step++) {
                     const stepGates = circuitBoard.querySelectorAll(`.gate-placeholder[data-step='${step}']`);
                     let controlQubitZone = null;
                     const targetQubitZones = [];
@@ -479,12 +605,15 @@
                     });
                     if (controlQubitZone && targetQubitZones.length > 0) {
                         const controlRect = controlQubitZone.getBoundingClientRect(); 
-                        const boardRect = circuitBoard.getBoundingClientRect();
-                        const startX = controlRect.left - boardRect.left + controlRect.width / 2; 
-                        const startY = controlRect.top - boardRect.top + controlRect.height / 2;
+                        // We need relative coordinates within the connector-svg/content wrapper, not viewport
+                        const containerRect = document.getElementById('circuit-board-content').getBoundingClientRect();
+                        
+                        const startX = controlRect.left - containerRect.left + controlRect.width / 2; 
+                        const startY = controlRect.top - containerRect.top + controlRect.height / 2;
+                        
                         targetQubitZones.forEach(targetZone => {
                             const targetRect = targetZone.getBoundingClientRect(); 
-                            const endY = targetRect.top - boardRect.top + targetRect.height / 2;
+                            const endY = targetRect.top - containerRect.top + targetRect.height / 2;
                             const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                             line.setAttribute('x1', startX); line.setAttribute('y1', startY); line.setAttribute('x2', startX); line.setAttribute('y2', endY);
                             line.setAttribute('stroke', '#67e8f9'); line.setAttribute('stroke-width', '3');
@@ -494,8 +623,14 @@
                 }
             }
             
+            // CHAT LOGIC
             sendBtn.addEventListener('click', handleChatSubmit);
-            chatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleChatSubmit(); });
+            chatInput.addEventListener('keypress', (e) => { 
+                if (e.key === 'Enter' && !e.shiftKey) { 
+                    e.preventDefault(); 
+                    handleChatSubmit(); 
+                } 
+            });
             
             async function handleChatSubmit() {
                 const message = chatInput.value.trim();
@@ -531,12 +666,17 @@
                 else if (type === 'bot-error') bubbleColor = 'bg-red-500';
                 else if (type === 'bot-loading') bubble.classList.add('bot-loading-bubble');
                 bubble.classList.add(bubbleColor);
+                
+                // Basic Markdown-ish parser for formatting
+                const formattedMessage = message.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+                
                 const text = document.createElement('p');
-                text.className = 'text-sm';
+                text.className = 'text-sm leading-relaxed';
+                
                 if (type === 'bot-loading') {
                     text.innerHTML = `<svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
                 } else {
-                    text.textContent = message;
+                    text.innerHTML = formattedMessage;
                 }
                 bubble.appendChild(text);
                 wrapper.appendChild(bubble);
@@ -549,3 +689,4 @@
     </script>
 </body>
 </html>
+
