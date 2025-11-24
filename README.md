@@ -2,6 +2,7 @@
 CircuitView is a web-based quantum circuit simulator for education and research. It combines a drag and drop quantum composer (similar to IBM's QC) with a 3D Bloch sphere visualization and integrated AI Chatbot powered by OpenAI to help users understand their circuit or quantum mechanics better.
 
 Setup Instructions:
+
 	1. Install the folder from the github.
 	2. Open powershell or terminal.
 	3. Navigate to the project folder (cd).
