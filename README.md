@@ -1,4 +1,5 @@
 #**CircuitView: Interactive Quantum Composer and AI Assistant**
+
 CircuitView is a web-based quantum circuit simulator for education and research. It combines a drag and drop quantum composer (similar to IBM's QC) with a 3D Bloch sphere visualization and integrated AI Chatbot powered by OpenAI to help users understand their circuit or quantum mechanics better.
 
 ##**Setup Instructions:**
