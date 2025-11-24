@@ -13,6 +13,7 @@ Setup Instructions:
 	8. Open your web browser and navigate to http://127.0.0.1:5000
 
 Usage Guide:
+
 	1. Enter OpenAI API key in the top header and click "Save." It will be stored locally in 	your browser
 	2. Build a Circuit: Drag gates from the palette onto the circuit lines.
 		Adding/Removing Qubits: Use the + and - buttons next to Qubit count.
