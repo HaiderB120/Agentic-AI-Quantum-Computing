@@ -1,8 +1,8 @@
-#**CircuitView: Interactive Quantum Composer and AI Assistant**
+# **CircuitView: Interactive Quantum Composer and AI Assistant**
 
 CircuitView is a web-based quantum circuit simulator for education and research. It combines a drag and drop quantum composer (similar to IBM's QC) with a 3D Bloch sphere visualization and integrated AI Chatbot powered by OpenAI to help users understand their circuit or quantum mechanics better.
 
-##**Setup Instructions:**
+## **Setup Instructions:**
 	1. Install the folder from the github.
 	2. Open powershell or terminal.
 	3. Navigate to the project folder (cd).
@@ -12,7 +12,7 @@ CircuitView is a web-based quantum circuit simulator for education and research.
 	7. flask run
 	8. Open your web browser and navigate to http://127.0.0.1:5000
 
-##**Usage Guide:**
+## **Usage Guide:**
 	1. Enter OpenAI API key in the top header and click "Save." It will be stored locally in 	your browser
 	2. Build a Circuit: Drag gates from the palette onto the circuit lines.
 		+Adding/Removing Qubits: Use the + and - buttons next to Qubit count.
