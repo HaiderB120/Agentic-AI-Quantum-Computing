@@ -15,10 +15,10 @@ CircuitView is a web-based quantum circuit simulator for education and research.
 ## **Usage Guide:**
 	1. Enter OpenAI API key in the top header and click "Save." It will be stored locally in 	your browser
 	2. Build a Circuit: Drag gates from the palette onto the circuit lines.
-		+Adding/Removing Qubits: Use the + and - buttons next to Qubit count.
-		+Changing Circuit Size: Press + or - next to "Steps" to add or remove columns.
-		+Delete Gates: Right click on a gate to remove it.
-		+Move Gates: Drag and drop existing gates to move them, dragging one onto another will swap them.
+		+ Adding/Removing Qubits: Use the + and - buttons next to Qubit count.
+		+ Changing Circuit Size: Press + or - next to "Steps" to add or remove columns.
+		+ Delete Gates: Right click on a gate to remove it.
+		+ Move Gates: Drag and drop existing gates to move them, dragging one onto another will swap them.
 	3. Click "Run Circuit" to see the probabilities chart and 3D Bloch Sphere of your
 	current circuit
 	4. Ask the AI any questions you may have. It knows your current configuration so can
