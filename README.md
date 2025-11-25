@@ -8,6 +8,7 @@ CircuitView is a web-based quantum circuit simulator for education and research.
 	3. Navigate to the project folder (cd).
 	4. python -m venv venv (Windows) or python3 -m venv venv (Mac/Linux)
 	5. .\venv\Scripts\Activate.ps1 (Windows) or source venv/bin/activate (Mac/Linux)
+		- May have to run: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 	6. Install the libraries: pip install Flask qiskit qiskit-aer numpy openai
 	7. flask run
 	8. Open your web browser and navigate to http://127.0.0.1:5000
